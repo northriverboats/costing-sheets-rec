@@ -1,0 +1,9 @@
+.direnv/*
+__pycache__/*
+build/*
+dist/*
+.env
+*.pyc
+Lib/*
+Scripts/*
+*.pickle
