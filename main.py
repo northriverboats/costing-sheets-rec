@@ -61,8 +61,47 @@ def unpickle_boats(folder):
     boats = load(open(pickle_file, 'rb'))
     return boats
 
-def find_excel_files(folder):
-    pass
+
+def process_labor_rate(boats, model, length):
+    for rate in rates:
+        print('        {}: {}'.format(rate[0], boats[model][rate[0]]))
+
+def process_by_parts(boats, model, length, section):
+    for part in sorted(boats[model][section[0] + ' PARTS'], key = lambda i: (i['VENDOR'], i['PART NUMBER'])):
+        x = part[str(length) + ' RRS']
+        print('           | {:15.15} | {:15.15} | {:25.25} | {:8.2f} | {:6.6} | {:10.4f} | {:14.6f} | {:2.2} |'.format(
+            part['VENDOR'],
+            part['PART NUMBER'][1:-1],
+            part['DESCRIPTION'],
+            part['PRICE'],
+            part['UOM'],
+            float(part[str(length) + ' QTY']),
+            float(part[str(length) + ' TOTAL']),
+            (part[str(length) + ' RRS']),
+        ))
+
+
+def process_by_section(boats, model, length):
+    for section in sections[::-1]:
+        print('        ' + section[0])
+        process_by_parts(boats, model, length, section)
+
+def process_boat(boats, model, length):
+    # load up template at this level
+    process_labor_rate(boats, model, length)
+    process_by_section(boats, model, length)
+    print('        ' + model + ' ' + str(length) + '.xlsx')
+
+def process_by_length(boats, model):
+    for length in boats[model]["BOAT SIZES"]:
+        print('    '+str(length))
+        process_boat(boats, model, length)
+
+def process_by_model(boats):
+    for model in boats:
+        print(model.upper())
+        process_by_length(boats, model)
+
 
 # pylint: disable=no-value-for-parameter
 @click.command()
@@ -72,7 +111,7 @@ def find_excel_files(folder):
 def main(debug, verbose, folder):
     load_environment()
     boats = unpickle_boats(folder)
-    print(len(boats))
+    process_by_model(boats)
 
 
 if __name__ == "__main__":
