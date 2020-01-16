@@ -74,7 +74,6 @@ def main(debug, verbose, folder):
     boats = unpickle_boats(folder)
     print(len(boats))
 
-print('this works!!!!!!!!')
+
 if __name__ == "__main__":
-    print('this works!!!!')
     main()
