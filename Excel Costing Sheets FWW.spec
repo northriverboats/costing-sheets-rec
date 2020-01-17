@@ -4,7 +4,7 @@ block_cipher = None
 
 
 a = Analysis(['main.py'],
-             pathex=['C:\\Developer\\nrb-costing-sheets'],
+             pathex=['C:\\Development\\nrb-costing-sheets'],
              binaries=[],
              datas=[('pickle.ico','.'),('.env','.')],
              hiddenimports=[],

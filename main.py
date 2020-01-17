@@ -20,10 +20,10 @@ sections = [
     # Section, start, end, consumable, start-del, end-del
     ["FABRICATION", 8, 32, 35, 0, 0],
     ["PAINT", 42, 64, 67, 0, 0],
-    ["CANVAS", 74, 96, 0, 0, 0],
-    ["OUTFITTING", 106, 356, 0, 0,0 ],
+    ["CANVAS", 74, 96, 0, 71, 102],
+    ["OUTFITTING", 106, 356, 0, 0, 0 ],
     ["ENGINE & JET", 391, 401, 0, 388, 407],
-    ["TRAILER", 411, 412, 0, 408, 413],
+    ["TRAILER", 411, 412, 0, 0, 0],
 ]
 
 
@@ -48,10 +48,8 @@ def load_environment():
     # load environmental variables
     load_dotenv(dotenv_path = Path(bundle_dir) / ".env")
 
-def unpickle_boats(folder):
-    if folder == None:
-        folder = os.getenv('FOLDER')
-    base = Path(folder)
+def unpickle_boats(pickle_folder):
+    base = Path(pickle_folder)
 
     pickle_file = base.joinpath(base.stem + '.pickle')
     if pickle_file.exists() == False:
@@ -61,57 +59,102 @@ def unpickle_boats(folder):
     boats = load(open(pickle_file, 'rb'))
     return boats
 
+def resolve_environment(value, environmental_string):
+    if value == None:
+        value = os.getenv(environmental_string)
+    return value
 
-def process_labor_rate(boats, model, length):
-    for rate in rates:
-        print('        {}: {}'.format(rate[0], boats[model][rate[0]]))
 
-def process_by_parts(boats, model, length, section):
+def process_labor_rate(ws, boats, model, length):
+    for rate, column, row in rates:
+        labor = boats[model][rate]
+        _ = ws.cell(column=column, row=row, value=float(labor))
+
+def process_part_highlighting(ws, length, part):
+    mode = part[str(length) + ' RRS']
+    if "P" in mode:
+        pass
+    if "Z" in mode:
+        pass
+
+def process_by_parts(ws, boats, model, length, section, start, end):
     for part in sorted(boats[model][section[0] + ' PARTS'], key = lambda i: (i['VENDOR'], i['PART NUMBER'])):
-        x = part[str(length) + ' RRS']
-        print('           | {:15.15} | {:15.15} | {:25.25} | {:8.2f} | {:6.6} | {:10.4f} | {:14.6f} | {:2.2} |'.format(
-            part['VENDOR'],
-            part['PART NUMBER'][1:-1],
-            part['DESCRIPTION'],
-            part['PRICE'],
-            part['UOM'],
-            float(part[str(length) + ' QTY']),
-            float(part[str(length) + ' TOTAL']),
-            (part[str(length) + ' RRS']),
-        ))
+        qty = float(part[str(length) + ' QTY'])
+        if qty > 0: 
+            print('           | {:15.15} | {:15.15} | {:25.25} | {:8.2f} | {:6.6} | {:10.4f} | {:14.6f} | {:2.2} |'.format(
+                part['VENDOR'],
+                part['PART NUMBER'][1:-1],
+                part['DESCRIPTION'],
+                part['PRICE'],
+                part['UOM'],
+                float(part[str(length) + ' QTY']),
+                float(part[str(length) + ' TOTAL']),
+                (part[str(length) + ' RRS']),
+            ))
+            process_part_highlighting(ws, length, part)
+
+def delete_unused_section(ws, start_del, end_del):
+    ws.delete_rows(start_del, end_del - start_del)
+
+def process_consumables(ws, boats, model, length, section, consumable):
+    pass
+
+def process_by_section(ws, boats, model, length):
+    for section, start, end, consumable, start_del, end_del in sections[::-1]:
+        if len(boats['model'][section + ' PARTS']) == 0 and start_del > 0:
+            delete_unused_section(ws, start_del, end_del)
+        else:
+            process_consumables(ws, boats, model, length, section, consumable)
+            process_by_parts(ws, boats, model, length, section, start, end)
+
+def generate_filename(model, length, output_folder):
+    return output_folder + "\\" + "Costing Sheet {}' {}.xlsx".format(length, model.upper())
+
+def process_sheetname(ws, model, length):
+     _ = ws.cell(column=3, row=3, value="{}' {}".format(length, model))
 
 
-def process_by_section(boats, model, length):
-    for section in sections[::-1]:
-        print('        ' + section[0])
-        process_by_parts(boats, model, length, section)
+def load_template(template_file):
+    wb = load_workbook(template_file)
+    ws = wb.active
+    return [wb, ws]
 
-def process_boat(boats, model, length):
-    # load up template at this level
-    process_labor_rate(boats, model, length)
-    process_by_section(boats, model, length)
-    print('        ' + model + ' ' + str(length) + '.xlsx')
+def process_boat(boats, model, length, output_folder, template_file):
+    wb, ws = load_template(template_file)
+    
+    process_sheetname(ws, model, length)
+    process_labor_rate(ws, boats, model, length)
+    # process_by_section(ws, boats, model, length)
 
-def process_by_length(boats, model):
+    file_name = generate_filename(model, length, output_folder)
+    wb.save(file_name)
+
+def process_by_length(boats, model, output_folder, template_file):
     for length in boats[model]["BOAT SIZES"]:
-        print('    '+str(length))
-        process_boat(boats, model, length)
+        process_boat(boats, model, length, output_folder, template_file)
+        break
 
-def process_by_model(boats):
+def process_by_model(boats, output_folder, template_file):
     for model in boats:
-        print(model.upper())
-        process_by_length(boats, model)
-
+        process_by_length(boats, model, output_folder, template_file)
+        break
 
 # pylint: disable=no-value-for-parameter
 @click.command()
 @click.option('--debug', '-d', is_flag=True, help='show debug output')
 @click.option('--verbose', '-v', default=1, type=int, help='verbosity level 0-3')
-@click.option('--folder', '-f', required=False, type=click.Path(exists=True, file_okay=False), help="folder to process")
-def main(debug, verbose, folder):
+@click.option('--folder', '-f', required=False, type=click.Path(exists=True, file_okay=False), help="directory to process")
+@click.option('--output', '-o', required=False, type=click.Path(exists=True, file_okay=False), help="output directory")
+@click.option('--template', '-t', required=False, type=click.Path(exists=True, dir_okay=False), help="template xlsx sheet")
+def main(debug, verbose, folder, output, template):
     load_environment()
-    boats = unpickle_boats(folder)
-    process_by_model(boats)
+    pickle_folder = resolve_environment(folder, 'FOLDER')
+    output_folder = resolve_environment(output, 'OUTPUT')
+    template_file = resolve_environment(template, 'TEMPLATE')
+
+    boats = unpickle_boats(pickle_folder)
+
+    process_by_model(boats, output_folder, template_file)
 
 
 if __name__ == "__main__":
