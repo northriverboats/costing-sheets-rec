@@ -9,6 +9,7 @@ from openpyxl.styles import PatternFill, Border, Side, Alignment, Font
 from dotenv import load_dotenv
 
 dbg = 0
+consumable_column = 9
 
 rates = [
     # labor rate, column, row
@@ -96,23 +97,34 @@ def process_by_parts(ws, boats, model, length, section, start, end):
 def delete_unused_section(ws, start_del, end_del):
     ws.delete_rows(start_del, end_del - start_del)
 
-def process_consumables(ws, boats, model, length, section, consumable):
-    pass
+def process_consumables(ws, boats, model, length, section, start_row, consumable_row):
+    if consumable_row > 0:
+        consumables = float(boats[model][section + ' CONSUMABLES'])
+        formula = "=SUM({}{}:{}{})*{}".format(
+            chr(64 + consumable_column),
+            start_row,
+            chr(64 + consumable_column),
+            consumable_row - 1,
+            consumables
+        )
+        _ = ws.cell(column=consumable_column, row=consumable_row, value=formula)
+    
 
 def process_by_section(ws, boats, model, length):
-    for section, start, end, consumable, start_del, end_del in sections[::-1]:
-        if len(boats['model'][section + ' PARTS']) == 0 and start_del > 0:
-            delete_unused_section(ws, start_del, end_del)
+    for section, start_row, end_row, consumable_row, start_delete_row, end_delete_row in sections[::-1]:
+        number_of_parts = len(boats[model][section + ' PARTS'])
+        if number_of_parts == 0 and start_delete_row > 0:
+            delete_unused_section(ws, start_delete_row, end_delete_row)
         else:
-            process_consumables(ws, boats, model, length, section, consumable)
-            process_by_parts(ws, boats, model, length, section, start, end)
+            process_consumables(ws, boats, model, length, section, start_row, consumable_row)
+            # process_by_parts(ws, boats, model, length, section, start_row, end_row)
+
 
 def generate_filename(model, length, output_folder):
     return output_folder + "\\" + "Costing Sheet {}' {}.xlsx".format(length, model.upper())
 
 def process_sheetname(ws, model, length):
      _ = ws.cell(column=3, row=3, value="{}' {}".format(length, model))
-
 
 def load_template(template_file):
     wb = load_workbook(template_file)
@@ -124,7 +136,7 @@ def process_boat(boats, model, length, output_folder, template_file):
     
     process_sheetname(ws, model, length)
     process_labor_rate(ws, boats, model)
-    # process_by_section(ws, boats, model, length)
+    process_by_section(ws, boats, model, length)
 
     file_name = generate_filename(model, length, output_folder)
     wb.save(file_name)
