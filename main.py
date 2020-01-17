@@ -65,10 +65,10 @@ def resolve_environment(value, environmental_string):
     return value
 
 
-def process_labor_rate(ws, boats, model, length):
+def process_labor_rate(ws, boats, model):
     for rate, column, row in rates:
-        labor = boats[model][rate]
-        _ = ws.cell(column=column, row=row, value=float(labor))
+        labor = float(boats[model][rate])
+        _ = ws.cell(column=column, row=row, value=labor)
 
 def process_part_highlighting(ws, length, part):
     mode = part[str(length) + ' RRS']
@@ -123,7 +123,7 @@ def process_boat(boats, model, length, output_folder, template_file):
     wb, ws = load_template(template_file)
     
     process_sheetname(ws, model, length)
-    process_labor_rate(ws, boats, model, length)
+    process_labor_rate(ws, boats, model)
     # process_by_section(ws, boats, model, length)
 
     file_name = generate_filename(model, length, output_folder)
