@@ -1,6 +1,7 @@
 import click
 import sys
 import os
+import re
 from pickle import load
 from pathlib import Path
 from openpyxl import load_workbook
@@ -21,9 +22,9 @@ sections = [
     # Section, start, end, consumable, start-del, end-del
     ["FABRICATION", 8, 32, 35, 0, 0],
     ["PAINT", 42, 64, 67, 0, 0],
-    ["CANVAS", 74, 96, 0, 71, 102],
+    ["CANVAS", 74, 96, 0, 70, 102],
     ["OUTFITTING", 106, 356, 0, 0, 0 ],
-    ["ENGINE & JET", 391, 401, 0, 388, 407],
+    ["ENGINE & JET", 391, 401, 0, 387, 407],
     ["TRAILER", 411, 412, 0, 0, 0],
 ]
 
@@ -71,31 +72,70 @@ def process_labor_rate(ws, boats, model):
         labor = float(boats[model][rate])
         _ = ws.cell(column=column, row=row, value=labor)
 
-def process_part_highlighting(ws, length, part):
-    mode = part[str(length) + ' RRS']
+def process_part_highlighting(ws, length, part, mode):
     if "P" in mode:
         pass
     if "Z" in mode:
         pass
 
 def process_by_parts(ws, boats, model, length, section, start, end):
-    for part in sorted(boats[model][section[0] + ' PARTS'], key = lambda i: (i['VENDOR'], i['PART NUMBER'])):
+    offset = 0
+    for part in sorted(boats[model][section + ' PARTS'], key = lambda i: (i['VENDOR'], i['PART NUMBER'])):
+        mode = part[str(length) + ' RRS']
         qty = float(part[str(length) + ' QTY'])
-        if qty > 0: 
-            print('           | {:15.15} | {:15.15} | {:25.25} | {:8.2f} | {:6.6} | {:10.4f} | {:14.6f} | {:2.2} |'.format(
-                part['VENDOR'],
-                part['PART NUMBER'][1:-1],
-                part['DESCRIPTION'],
-                part['PRICE'],
-                part['UOM'],
-                float(part[str(length) + ' QTY']),
-                float(part[str(length) + ' TOTAL']),
-                (part[str(length) + ' RRS']),
-            ))
-            process_part_highlighting(ws, length, part)
+        row = start + offset
+        if qty > 0 or mode == 'Z': 
+            ws.cell(column=1, row=row, value=part['VENDOR'])
+            ws.cell(column=2, row=row, value=part['PART NUMBER'][1:-1])
+            if part['DESCRIPTION'] != 'do not use':
+                ws.cell(column=3, row=row, value=part['DESCRIPTION'])
+            ws.cell(column=4, row=row, value=part['PRICE'])
+            ws.cell(column=5, row=row, value=part['UOM'])
+            ws.cell(column=6, row=row, value=float(part[str(length) + ' QTY']))
 
-def delete_unused_section(ws, start_del, end_del):
-    ws.delete_rows(start_del, end_del - start_del)
+            process_part_highlighting(ws, length, part, mode)
+            offset += 1
+
+    delete_unused_section(ws, start + offset, end)
+ 
+def adjust_formula(function, threshold, offset):
+    pattern =  re.compile(r"(\$?[A-Za-z]{1,3})(\$?[1-9][0-9]{0,6})")
+    start_pos = 0
+    result = ""
+    for match in pattern.finditer(function):
+        result += function[start_pos:match.start()+1]
+        num = match.group(2)
+        if int(num) >= threshold:
+            num = str(int(num) + offset)
+        result += num
+        start_pos = match.end()
+    if start_pos <= len(function):
+        result += function[start_pos:]
+    return result
+
+def recalc_sheet(ws, threshold, offset):
+    for row in ws.iter_rows():
+        for cell in row:
+            value = cell.value
+            if str(value)[0] == "=":
+                formula = adjust_formula(value, threshold, offset)
+                if formula != value:
+                    cell.value = formula
+
+
+
+def delete_unused_section(ws, start_delete_row, end_delete_row):
+    range_to_move = "A{}:I{}".format(
+        end_delete_row,
+        ws.max_row + 300
+    )
+    ws.move_range(
+        range_to_move,
+        rows=start_delete_row - end_delete_row,
+        cols=0,
+        translate=False
+    )
+    recalc_sheet(ws,start_delete_row, start_delete_row - end_delete_row)
 
 def process_consumables(ws, boats, model, length, section, start_row, consumable_row):
     if consumable_row > 0:
@@ -112,19 +152,22 @@ def process_consumables(ws, boats, model, length, section, start_row, consumable
 
 def process_by_section(ws, boats, model, length):
     for section, start_row, end_row, consumable_row, start_delete_row, end_delete_row in sections[::-1]:
+        debug(3, '    {}'.format(section))
+
         number_of_parts = len(boats[model][section + ' PARTS'])
         if number_of_parts == 0 and start_delete_row > 0:
             delete_unused_section(ws, start_delete_row, end_delete_row)
         else:
             process_consumables(ws, boats, model, length, section, start_row, consumable_row)
-            # process_by_parts(ws, boats, model, length, section, start_row, end_row)
-
+            process_by_parts(ws, boats, model, length, section, start_row, end_row)
 
 def generate_filename(model, length, output_folder):
     return output_folder + "\\" + "Costing Sheet {}' {}.xlsx".format(length, model.upper())
 
 def process_sheetname(ws, model, length):
-     _ = ws.cell(column=3, row=3, value="{}' {}".format(length, model))
+    value = "{}' {}".format(length, model)
+    debug(2,"  {}".format(length))
+    _ = ws.cell(column=3, row=3, value=value)
 
 def load_template(template_file):
     wb = load_workbook(template_file)
@@ -141,15 +184,16 @@ def process_boat(boats, model, length, output_folder, template_file):
     file_name = generate_filename(model, length, output_folder)
     wb.save(file_name)
 
+
+
 def process_by_length(boats, model, output_folder, template_file):
     for length in boats[model]["BOAT SIZES"]:
         process_boat(boats, model, length, output_folder, template_file)
-        break
 
 def process_by_model(boats, output_folder, template_file):
     for model in boats:
+        debug(1, '{}'.format(model))
         process_by_length(boats, model, output_folder, template_file)
-        break
 
 # pylint: disable=no-value-for-parameter
 @click.command()
@@ -159,6 +203,9 @@ def process_by_model(boats, output_folder, template_file):
 @click.option('--output', '-o', required=False, type=click.Path(exists=True, file_okay=False), help="output directory")
 @click.option('--template', '-t', required=False, type=click.Path(exists=True, dir_okay=False), help="template xlsx sheet")
 def main(debug, verbose, folder, output, template):
+    global dbg
+    if debug:
+        dbg = verbose
     load_environment()
     pickle_folder = resolve_environment(folder, 'FOLDER')
     output_folder = resolve_environment(output, 'OUTPUT')
