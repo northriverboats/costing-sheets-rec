@@ -16,6 +16,7 @@ rates = [
     # labor rate, column, row
     ["FABRICATION LABOR RATE", 7, 428],
     ["PAINT LABOR RATE", 7, 429],
+    ["CANVAS LABOR RATE", 7, 430],
     ["OUTFITTING LABOR RATE", 7, 431],
 ]
 sections = [
@@ -137,6 +138,15 @@ def delete_unused_section(ws, start_delete_row, end_delete_row):
     )
     recalc_sheet(ws,start_delete_row, start_delete_row - end_delete_row)
 
+def delete_unused_materials_and_labor_rate(ws, section):
+    if section == 'ENGINE & JET':
+        return None
+    cells = [cell for cell in ws['D'] if cell.value == section.title()]
+    for cell in cells:
+        row = cell.row
+        delete_unused_section(ws, row, row + 1)
+    pass
+
 def process_consumables(ws, boats, model, length, section, start_row, consumable_row):
     if consumable_row > 0:
         consumables = float(boats[model][section + ' CONSUMABLES'])
@@ -157,6 +167,7 @@ def process_by_section(ws, boats, model, length):
         number_of_parts = len(boats[model][section + ' PARTS'])
         if number_of_parts == 0 and start_delete_row > 0:
             delete_unused_section(ws, start_delete_row, end_delete_row)
+            delete_unused_materials_and_labor_rate(ws, section)
         else:
             process_consumables(ws, boats, model, length, section, start_row, consumable_row)
             process_by_parts(ws, boats, model, length, section, start_row, end_row)
