@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 
 dbg = 0
 consumable_column = 9
+without_options = ""
+with_options = " WITH OPTIONS"
 
 rates = [
     # labor rate, column, row
@@ -73,19 +75,21 @@ def process_labor_rate(ws, boats, model):
         labor = float(boats[model][rate])
         _ = ws.cell(column=column, row=row, value=labor)
 
-def process_part_highlighting(ws, length, part, mode):
+def process_part_highlighting(ws, length, part, mode, sheet_type):
+    if sheet_type == without_options:
+        return
     if "P" in mode:
         pass
     if "Z" in mode:
         pass
 
-def process_by_parts(ws, boats, model, length, section, start, end):
+def process_by_parts(ws, boats, model, length, section, sheet_type, start, end):
     offset = 0
     for part in sorted(boats[model][section + ' PARTS'], key = lambda i: (i['VENDOR'], i['PART NUMBER'])):
         mode = part[str(length) + ' RRS']
         qty = float(part[str(length) + ' QTY'])
         row = start + offset
-        if qty > 0 or mode == 'Z': 
+        if qty > 0 or (mode == 'Z' and sheet_type == with_options):
             ws.cell(column=1, row=row, value=part['VENDOR'])
             ws.cell(column=2, row=row, value=part['PART NUMBER'][1:-1])
             if part['DESCRIPTION'] != 'do not use':
@@ -94,7 +98,7 @@ def process_by_parts(ws, boats, model, length, section, start, end):
             ws.cell(column=5, row=row, value=part['UOM'])
             ws.cell(column=6, row=row, value=float(part[str(length) + ' QTY']))
 
-            process_part_highlighting(ws, length, part, mode)
+            process_part_highlighting(ws, length, part, mode, sheet_type)
             offset += 1
 
     delete_unused_section(ws, start + offset, end)
@@ -122,8 +126,6 @@ def recalc_sheet(ws, threshold, offset):
                 formula = adjust_formula(value, threshold, offset)
                 if formula != value:
                     cell.value = formula
-
-
 
 def delete_unused_section(ws, start_delete_row, end_delete_row):
     range_to_move = "A{}:I{}".format(
@@ -158,9 +160,8 @@ def process_consumables(ws, boats, model, length, section, start_row, consumable
             consumables
         )
         _ = ws.cell(column=consumable_column, row=consumable_row, value=formula)
-    
-
-def process_by_section(ws, boats, model, length):
+  
+def process_by_section(ws, boats, model, length, type):
     for section, start_row, end_row, consumable_row, start_delete_row, end_delete_row in sections[::-1]:
         debug(3, '    {}'.format(section))
 
@@ -170,10 +171,20 @@ def process_by_section(ws, boats, model, length):
             delete_unused_materials_and_labor_rate(ws, section)
         else:
             process_consumables(ws, boats, model, length, section, start_row, consumable_row)
-            process_by_parts(ws, boats, model, length, section, start_row, end_row)
+            process_by_parts(ws, boats, model, length, section, type, start_row, end_row)
 
-def generate_filename(model, length, output_folder):
-    return output_folder + "\\" + "Costing Sheet {}' {}.xlsx".format(length, model.upper())
+def generate_filename(folder, model, length, sheet_type):
+    return folder + "\\Costing Sheet {}' {} 2020{}.xlsx".format(length, model.upper(), sheet_type)
+
+def create_folder_if_needed(folder):
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+
+def save_spreadsheet(wb, model, length, sheet_type, output_folder):
+    folder = output_folder + "\\" + model.upper()
+    create_folder_if_needed(folder)
+    file_name = generate_filename(folder, model, length, sheet_type)
+    wb.save(file_name)
 
 def process_sheetname(ws, model, length):
     value = "{}' {}".format(length, model)
@@ -185,38 +196,37 @@ def load_template(template_file):
     ws = wb.active
     return [wb, ws]
 
-def process_boat(boats, model, length, output_folder, template_file):
+def process_boat(boats, model, length, output_folder, template_file, sheet_type):
     wb, ws = load_template(template_file)
     
     process_sheetname(ws, model, length)
     process_labor_rate(ws, boats, model)
-    process_by_section(ws, boats, model, length)
+    process_by_section(ws, boats, model, length, sheet_type)
 
-    file_name = generate_filename(model, length, output_folder)
-    wb.save(file_name)
-
-
+    save_spreadsheet(wb, model, length, sheet_type, output_folder)
 
 def process_by_length(boats, model, output_folder, template_file):
     for length in boats[model]["BOAT SIZES"]:
-        process_boat(boats, model, length, output_folder, template_file)
+        process_boat(boats, model, length, output_folder, template_file, without_options)
+        process_boat(boats, model, length, output_folder, template_file, with_options)
 
 def process_by_model(boats, output_folder, template_file):
     for model in boats:
         debug(1, '{}'.format(model))
         process_by_length(boats, model, output_folder, template_file)
 
+def setup_debug(verbose):
+    global dbg
+    dbg = verbose
+
 # pylint: disable=no-value-for-parameter
 @click.command()
-@click.option('--debug', '-d', is_flag=True, help='show debug output')
-@click.option('--verbose', '-v', default=1, type=int, help='verbosity level 0-3')
+@click.option('--verbose', '-v', default=0, type=int, help='verbosity level 0-3')
 @click.option('--folder', '-f', required=False, type=click.Path(exists=True, file_okay=False), help="directory to process")
 @click.option('--output', '-o', required=False, type=click.Path(exists=True, file_okay=False), help="output directory")
 @click.option('--template', '-t', required=False, type=click.Path(exists=True, dir_okay=False), help="template xlsx sheet")
-def main(debug, verbose, folder, output, template):
-    global dbg
-    if debug:
-        dbg = verbose
+def main(verbose, folder, output, template):
+    setup_debug(verbose)
     load_environment()
     pickle_folder = resolve_environment(folder, 'FOLDER')
     output_folder = resolve_environment(output, 'OUTPUT')

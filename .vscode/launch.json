@@ -11,7 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "stopOnEntry": false,
-            "args": ["-d", "-v", "2", "-f", "K:\\Links\\2020\\Boats"]
+            "args": ["-v", "3", "-f", "K:\\Links\\2020\\Boats"]
         }
     ]
 }
