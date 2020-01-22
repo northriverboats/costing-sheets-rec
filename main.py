@@ -6,13 +6,15 @@ from pickle import load
 from pathlib import Path
 from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
-from openpyxl.styles import PatternFill, Border, Side, Alignment, Font
+from openpyxl.styles import PatternFill, Border, Side, Alignment, Font, Color, colors
 from dotenv import load_dotenv
 
 dbg = 0
 consumable_column = 9
 without_options = ""
 with_options = " WITH OPTIONS"
+yellow = None
+yellow_fill = None
 
 rates = [
     # labor rate, column, row
@@ -69,19 +71,26 @@ def resolve_environment(value, environmental_string):
         value = os.getenv(environmental_string)
     return value
 
+def setup_styles():
+    global yellow, yellow_fill
+    yellow = Color(colors.YELLOW)
+    yellow_fill = PatternFill(fill_type='solid', start_color=yellow, end_color=yellow)
 
 def process_labor_rate(ws, boats, model):
     for rate, column, row in rates:
         labor = float(boats[model][rate])
         _ = ws.cell(column=column, row=row, value=labor)
 
-def process_part_highlighting(ws, length, part, mode, sheet_type):
+def process_part_highlighting(ws, length, part, mode, sheet_type, row):
     if sheet_type == without_options:
         return
     if "P" in mode:
-        pass
+        ws.cell(row=row, column=2).fill = yellow_fill
+        print(row)
     if "Z" in mode:
-        pass
+        ws.cell(row=row, column=1).fill = yellow_fill
+        ws.cell(row=row, column=2).fill = yellow_fill
+        print(row, row)
 
 def process_by_parts(ws, boats, model, length, section, sheet_type, start, end):
     offset = 0
@@ -98,7 +107,7 @@ def process_by_parts(ws, boats, model, length, section, sheet_type, start, end):
             ws.cell(column=5, row=row, value=part['UOM'])
             ws.cell(column=6, row=row, value=float(part[str(length) + ' QTY']))
 
-            process_part_highlighting(ws, length, part, mode, sheet_type)
+            process_part_highlighting(ws, length, part, mode, sheet_type, row)
             offset += 1
 
     delete_unused_section(ws, start + offset, end)
@@ -233,7 +242,7 @@ def main(verbose, folder, output, template):
     template_file = resolve_environment(template, 'TEMPLATE')
 
     boats = unpickle_boats(pickle_folder)
-
+    setup_styles()
     process_by_model(boats, output_folder, template_file)
 
 
