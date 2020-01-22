@@ -38,10 +38,15 @@ class Status():
     @property
     def section(self):
         return self.__section
-        
+
     @section.setter
     def section(self, value):
         self.__section = value
 
 status = new Status()
-```    
+status.percent = 25
+status.file  = r"K:\Links\2020\Boats\boats.pickle"
+status.section = 'OUTFITTING'
+print(status)
+
+```
