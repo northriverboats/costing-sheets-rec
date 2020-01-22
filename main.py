@@ -86,11 +86,9 @@ def process_part_highlighting(ws, length, part, mode, sheet_type, row):
         return
     if "P" in mode:
         ws.cell(row=row, column=2).fill = yellow_fill
-        print(row)
     if "Z" in mode:
         ws.cell(row=row, column=1).fill = yellow_fill
         ws.cell(row=row, column=2).fill = yellow_fill
-        print(row, row)
 
 def process_by_parts(ws, boats, model, length, section, sheet_type, start, end):
     offset = 0
