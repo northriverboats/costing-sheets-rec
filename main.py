@@ -15,6 +15,7 @@ without_options = ""
 with_options = " WITH OPTIONS"
 yellow = None
 yellow_fill = None
+status = None
 
 rates = [
     # labor rate, column, row
@@ -32,6 +33,48 @@ sections = [
     ["ENGINE & JET", 391, 401, 0, 387, 407],
     ["TRAILER", 411, 412, 0, 0, 0],
 ]
+
+
+class Status():
+    def __init__(self, output):
+        self.__output = output
+        self.__percent = 0
+        self.__file = ''
+        self.__section = ''
+
+    def __str__(self):
+        return "{}\t{}\t{}".format(
+            self.__percent, 
+            self.__file,
+            self.__section)
+
+    def output(self):
+        print(self)
+
+    @property
+    def percent(self):
+        return self.__percent
+
+    @percent.setter
+    def percent(self, value):
+        self.__percent = value
+
+    @property
+    def file(self):
+        return self.__file
+
+    @file.setter
+    def file(self, value):
+        self.__file = value
+
+    @property
+    def section(self):
+        return self.__section
+
+    @section.setter
+    def section(self, value):
+        self.__section = value
+
 
 
 """
@@ -223,17 +266,20 @@ def process_by_model(boats, output_folder, template_file):
         process_by_length(boats, model, output_folder, template_file)
 
 def setup_debug(verbose):
-    global dbg
-    dbg = verbose
+    global dbg, status
+    status = Status()
+    if not machine:
+        dbg = verbose
 
 # pylint: disable=no-value-for-parameter
 @click.command()
 @click.option('--verbose', '-v', default=0, type=int, help='verbosity level 0-3')
+@click.option('--machine', '-m', default=0, type=int, help='machine readable output, overrides --verbose')
 @click.option('--folder', '-f', required=False, type=click.Path(exists=True, file_okay=False), help="directory to process")
 @click.option('--output', '-o', required=False, type=click.Path(exists=True, file_okay=False), help="output directory")
 @click.option('--template', '-t', required=False, type=click.Path(exists=True, dir_okay=False), help="template xlsx sheet")
-def main(verbose, folder, output, template):
-    setup_debug(verbose)
+def main(verbose, machine, folder, output, template):
+    setup_debug(verbose, machine)
     load_environment()
     pickle_folder = resolve_environment(folder, 'FOLDER')
     output_folder = resolve_environment(output, 'OUTPUT')
