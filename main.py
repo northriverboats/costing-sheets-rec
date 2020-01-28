@@ -36,8 +36,7 @@ sections = [
 
 
 class Status():
-    def __init__(self, output):
-        self.__output = output
+    def __init__(self):
         self.__percent = 0
         self.__file = ''
         self.__section = ''
@@ -265,7 +264,7 @@ def process_by_model(boats, output_folder, template_file):
         debug(1, '{}'.format(model))
         process_by_length(boats, model, output_folder, template_file)
 
-def setup_debug(verbose):
+def setup_debug(verbose, machine):
     global dbg, status
     status = Status()
     if not machine:
