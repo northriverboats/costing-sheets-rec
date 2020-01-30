@@ -18,23 +18,20 @@ yellow_fill = None
 status = None
 
 rates = [
-    # labor rate, column, row, markup
-    ["FABRICATION LABOR RATE", 7, 428, 0.0],
-    ["PAINT LABOR RATE", 7, 429, 0.0],
-    ["CANVAS LABOR RATE", 7, 430, 0.0],
-    ["OUTFITTING LABOR RATE", 7, 431, 0.0],
-    ["ENGINE & JET", 0, 0, 0.0],
-    ["TRAILER", 0, 0, 0.0],
-
+    # labor rate, column, row
+    ["FABRICATION LABOR RATE", 7, 428],
+    ["PAINT LABOR RATE", 7, 429],
+    ["CANVAS LABOR RATE", 7, 430],
+    ["OUTFITTING LABOR RATE", 7, 431],
 ]
 sections = [
-    # Section, start, end, consumable, start-del, end-del
-    ["FABRICATION", 8, 32, 35, 0, 0],
-    ["PAINT", 42, 64, 67, 0, 0],
-    ["CANVAS", 74, 96, 0, 70, 102],
-    ["OUTFITTING", 106, 356, 0, 0, 0 ],
-    ["ENGINE & JET", 391, 401, 0, 387, 407],
-    ["TRAILER", 411, 412, 0, 0, 0],
+    # Section, start, end, consumable, start-del, end-del, markup
+    ["FABRICATION", 8, 32, 35, 0, 0, 0.0],
+    ["PAINT", 42, 64, 67, 0, 0, 0.0],
+    ["CANVAS", 74, 96, 0, 70, 102, 0.0],
+    ["OUTFITTING", 106, 356, 0, 0, 0, 0.0],
+    ["ENGINE & JET", 391, 401, 0, 387, 407, 0.0],
+    ["TRAILER", 411, 412, 0, 0, 0, 0.0],
 ]
 
 
@@ -124,8 +121,7 @@ def setup_styles():
 def process_labor_rate(ws, boats, model):
     for rate, column, row in rates:
         labor = float(boats[model][rate])
-        if row > 0:
-            _ = ws.cell(column=column, row=row, value=labor)
+        _ = ws.cell(column=column, row=row, value=labor)
 
 def process_part_highlighting(ws, length, part, mode, sheet_type, row):
     if sheet_type == without_options:
@@ -136,7 +132,7 @@ def process_part_highlighting(ws, length, part, mode, sheet_type, row):
         ws.cell(row=row, column=1).fill = yellow_fill
         ws.cell(row=row, column=2).fill = yellow_fill
 
-def process_by_parts(ws, boats, model, length, section, sheet_type, start, end):
+def process_by_parts(ws, boats, model, length, section, sheet_type, start, end, markup):
     offset = 0
     for part in sorted(boats[model][section + ' PARTS'], key = lambda i: (i['VENDOR'], i['PART NUMBER'])):
         mode = part[str(length) + ' RRS']
@@ -147,7 +143,8 @@ def process_by_parts(ws, boats, model, length, section, sheet_type, start, end):
             ws.cell(column=2, row=row, value=part['PART NUMBER'][1:-1])
             if part['DESCRIPTION'] != 'do not use':
                 ws.cell(column=3, row=row, value=part['DESCRIPTION'])
-            ws.cell(column=4, row=row, value=part['PRICE'])
+            price = float(part['PRICE']) + float(part['PRICE']) * markup
+            ws.cell(column=4, row=row, value=price)
             ws.cell(column=5, row=row, value=part['UOM'])
             ws.cell(column=6, row=row, value=float(part[str(length) + ' QTY']))
 
@@ -215,7 +212,7 @@ def process_consumables(ws, boats, model, length, section, start_row, consumable
         _ = ws.cell(column=consumable_column, row=consumable_row, value=formula)
   
 def process_by_section(ws, boats, model, length, type):
-    for section, start_row, end_row, consumable_row, start_delete_row, end_delete_row in sections[::-1]:
+    for section, start_row, end_row, consumable_row, start_delete_row, end_delete_row, markup in sections[::-1]:
         debug(3, '    {}'.format(section))
 
         number_of_parts = len(boats[model][section + ' PARTS'])
@@ -224,7 +221,7 @@ def process_by_section(ws, boats, model, length, type):
             delete_unused_materials_and_labor_rate(ws, section)
         else:
             process_consumables(ws, boats, model, length, section, start_row, consumable_row)
-            process_by_parts(ws, boats, model, length, section, type, start_row, end_row)
+            process_by_parts(ws, boats, model, length, section, type, start_row, end_row, markup)
 
 def generate_filename(folder, model, length, sheet_type):
     return folder + "\\Costing Sheet {}' {} 2020{}.xlsx".format(length, model.upper(), sheet_type)
