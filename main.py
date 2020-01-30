@@ -18,11 +18,14 @@ yellow_fill = None
 status = None
 
 rates = [
-    # labor rate, column, row
-    ["FABRICATION LABOR RATE", 7, 428],
-    ["PAINT LABOR RATE", 7, 429],
-    ["CANVAS LABOR RATE", 7, 430],
-    ["OUTFITTING LABOR RATE", 7, 431],
+    # labor rate, column, row, markup
+    ["FABRICATION LABOR RATE", 7, 428, 0.0],
+    ["PAINT LABOR RATE", 7, 429, 0.0],
+    ["CANVAS LABOR RATE", 7, 430, 0.0],
+    ["OUTFITTING LABOR RATE", 7, 431, 0.0],
+    ["ENGINE & JET", 0, 0, 0.0],
+    ["TRAILER", 0, 0, 0.0],
+
 ]
 sections = [
     # Section, start, end, consumable, start-del, end-del
@@ -121,7 +124,8 @@ def setup_styles():
 def process_labor_rate(ws, boats, model):
     for rate, column, row in rates:
         labor = float(boats[model][rate])
-        _ = ws.cell(column=column, row=row, value=labor)
+        if row > 0:
+            _ = ws.cell(column=column, row=row, value=labor)
 
 def process_part_highlighting(ws, length, part, mode, sheet_type, row):
     if sheet_type == without_options:
