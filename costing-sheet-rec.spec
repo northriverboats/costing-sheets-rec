@@ -4,7 +4,7 @@ block_cipher = None
 
 
 a = Analysis(['main.py'],
-             pathex=['C:\\Development\\nrb-costing-sheets'],
+             pathex=['C:\\Development\\costing-sheets-rec'],
              binaries=[],
              datas=[('pickle.ico','.'),('.env','.')],
              hiddenimports=[],
@@ -21,8 +21,8 @@ exe = EXE(pyz,
           a.binaries,
           a.zipfiles,
           a.datas,
-          name='Excel Costing Sheets',
+          name='Costing Sheets for Rec',
           debug=False,
           strip=False,
           upx=True,
-          console=False , icon='pickle.ico')
+          console=True , icon='pickle.ico')
