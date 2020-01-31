@@ -224,7 +224,7 @@ def process_by_section(ws, boats, model, length, type):
             process_by_parts(ws, boats, model, length, section, type, start_row, end_row, markup)
 
 def generate_filename(folder, model, length, sheet_type):
-    return folder + "\\Costing Sheet {}' {} 2020{}.xlsx".format(length, model.upper(), sheet_type)
+    return folder + "\\Parts Costing {}' {} 2020{}.xlsx".format(length, model.upper(), sheet_type)
 
 def create_folder_if_needed(folder):
     if not os.path.exists(folder):
