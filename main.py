@@ -271,15 +271,48 @@ def setup_debug(verbose, machine):
     if not machine:
         dbg = verbose
 
+
+def setup_markups(fabrication, paint, canvas, outfitting, engine, trailer):
+    global sections
+    for section_name, markup in [
+        ['FABRICATION', fabrication],
+        ['PAINT', paint],
+        ['CANVAS', canvas],
+        ['OUTFITTING', outfitting],
+        ['ENGINE & JET', engine],
+        ['TRAILER', trailer],
+    ]:
+        [section for section in sections if section[0] == section_name][0][6] = markup
+
+
 # pylint: disable=no-value-for-parameter
 @click.command()
 @click.option('--verbose', '-v', default=0, type=int, help='verbosity level 0-3')
 @click.option('--machine', '-m', default=0, type=int, help='machine readable output, overrides --verbose')
+@click.option('--markup-fabrication', '-mf', default=0, type=click.FloatRange(-1, 1), help='markup 0.05 is 5%')
+@click.option('--markup-paint', '-mp', default=0, type=click.FloatRange(-1, 1), help='markup 0.05 is 5%')
+@click.option('--markup-canvas', '-mc', default=0, type=click.FloatRange(-1, 1), help='markup 0.05 is 5%')
+@click.option('--markup-outfitting', '-mo', default=0, type=click.FloatRange(-1, 1), help='markup 0.05 is 5%')
+@click.option('--markup-engine', '-me', default=0, type=click.FloatRange(-1, 1), help='markup 0.05 is 5%')
+@click.option('--markup-trailer', '-mt', default=0, type=click.FloatRange(-1, 1), help='markup 0.05 is 5%')
 @click.option('--folder', '-f', required=False, type=click.Path(exists=True, file_okay=False), help="directory to process")
 @click.option('--output', '-o', required=False, type=click.Path(exists=True, file_okay=False), help="output directory")
 @click.option('--template', '-t', required=False, type=click.Path(exists=True, dir_okay=False), help="template xlsx sheet")
-def main(verbose, machine, folder, output, template):
+def main(
+    verbose,
+    machine,
+    markup_fabrication,
+    markup_paint,
+    markup_canvas,
+    markup_outfitting,
+    markup_engine,
+    markup_trailer,
+    folder,
+    output,
+    template
+):
     setup_debug(verbose, machine)
+    setup_markups(markup_fabrication, markup_paint, markup_canvas, markup_outfitting, markup_engine, markup_trailer)
     load_environment()
     pickle_folder = resolve_environment(folder, 'FOLDER')
     output_folder = resolve_environment(output, 'OUTPUT')
