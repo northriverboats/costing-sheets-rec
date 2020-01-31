@@ -246,12 +246,18 @@ def load_template(template_file):
     ws = wb.active
     return [wb, ws]
 
+def set_print_range(ws):
+    max_row = [cell for cell in ws['G'] if cell.value =="CONTRIBUTION MARGIN"][0].row
+    print_area = "A1:I{}".format(max_row)
+    ws.print_area = print_area
+
 def process_boat(boats, model, length, output_folder, template_file, sheet_type):
     wb, ws = load_template(template_file)
     
     process_sheetname(ws, model, length)
     process_labor_rate(ws, boats, model)
     process_by_section(ws, boats, model, length, sheet_type)
+    set_print_range(ws)
 
     save_spreadsheet(wb, model, length, sheet_type, output_folder)
 
