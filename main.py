@@ -111,6 +111,7 @@ def unpickle_boats(pickle_folder):
 def resolve_environment(value, environmental_string):
     if value == None:
         value = os.getenv(environmental_string)
+        value = os.environ.get(environmental_string, value)
     return value
 
 def setup_styles():
@@ -191,8 +192,6 @@ def delete_unused_section(ws, start_delete_row, end_delete_row):
     recalc_sheet(ws,start_delete_row, start_delete_row - end_delete_row)
 
 def delete_unused_materials_and_labor_rate(ws, section):
-    if section == 'ENGINE & JET':
-        return None
     cells = [cell for cell in ws['D'] if cell.value == section.title()]
     for cell in cells:
         row = cell.row
