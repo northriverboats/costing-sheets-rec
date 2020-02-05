@@ -96,7 +96,6 @@ def load_environment():
         # we are running in a normal Python environment
         bundle_dir = os.path.dirname(os.path.abspath(__file__))
 
-    print('Directory {}'.format(bundle_dir))
     # load environmental variables
     load_dotenv(dotenv_path = Path(bundle_dir) / ".env")
 
