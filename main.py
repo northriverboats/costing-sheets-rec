@@ -32,7 +32,7 @@ sections = [
     ["CANVAS", 74, 96, 0, 70, 102, 0.0],
     ["OUTFITTING", 106, 356, 0, 0, 0, 0.0],
     ["ENGINE & JET", 391, 401, 0, 387, 407, 0.0],
-    ["TRAILER", 411, 412, 0, 0, 0, 0.0],
+    ["TRAILER", 411, 412, 0, 407, 413, 0.0],
 ]
 
 
@@ -205,7 +205,7 @@ def process_consumables(ws, boats, model, length, section, start_row, consumable
         consumables = float(boats[model][section + ' CONSUMABLES'])
         formula = "=SUM({}{}:{}{})*{}".format(
             chr(64 + consumable_column),
-            start_row,
+            start_row - 1,
             chr(64 + consumable_column),
             consumable_row - 1,
             consumables
