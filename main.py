@@ -99,6 +99,31 @@ def load_environment():
     # load environmental variables
     load_dotenv(dotenv_path = Path(bundle_dir) / ".env")
 
+def merge_canvas_with_outfitting(boats, model):
+    canvas_parts_list = {k['PART NUMBER']:i for (i, k) in enumerate(boats[model]['CANVAS PARTS'])}
+    outfitting_parts_list = {k['PART NUMBER']:i for (i, k) in enumerate(boats[model]['OUTFITTING PARTS'])}
+    canvas_parts = set([k for k in canvas_parts_list])
+    outfitting_parts = set([k for k in outfitting_parts_list])
+    parts = canvas_parts.intersection(outfitting_parts)
+
+    for part in parts:
+        canvas_index = canvas_parts_list[part]
+        outfitting_index = outfitting_parts_list[part]
+        for size in boats[model]['BOAT SIZES']:
+            boats[model]['OUTFITTING PARTS'][outfitting_index][str(size) + ' QTY'] += boats[model]['CANVAS PARTS'][canvas_index][str(size) + ' QTY']
+            boats[model]['OUTFITTING PARTS'][outfitting_index][str(size) + ' TOTAL'] += boats[model]['CANVAS PARTS'][canvas_index][str(size) + ' TOTAL']
+
+    for part in canvas_parts.difference(outfitting_parts):
+        canvas_index = canvas_parts_list[part]
+        boats[model]['OUTFITTING PARTS'].append(boats[model]['CANVAS PARTS'][canvas_index])
+
+    boats[model]['CANVAS PARTS'] = []
+    # return(boats)
+
+def merge_canvas_with_outfitting_for_all_models(boats):
+    for model in boats:
+        merge_canvas_with_outfitting(boats, model)
+
 def unpickle_boats(pickle_folder):
     base = Path(pickle_folder)
 
@@ -108,6 +133,7 @@ def unpickle_boats(pickle_folder):
         sys.exit(1)
 
     boats = load(open(pickle_file, 'rb'))
+    merge_canvas_with_outfitting_for_all_models(boats)
     return boats
 
 def resolve_environment(value, environmental_string):
